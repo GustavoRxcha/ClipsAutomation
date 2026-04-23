@@ -1,0 +1,22 @@
+# Variáveis de ambiente (não subir para o git)
+.env
+
+# Ambiente virtual Python
+venv/
+.venv/
+
+# Cache do Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Pastas geradas pelo fluxo do projeto
+assets/
+temp/
+output/
+
+# Binários do FFmpeg (não versionar executáveis grandes)
+bin/
+
+# Modelos do Whisper baixados pelo faster-whisper
+models/

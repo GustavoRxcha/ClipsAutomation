@@ -1,0 +1,7 @@
+# Dependências do ClipsAutomation
+# Instale com: pip install -r requirements.txt
+
+pytubefix          # Download de vídeos do YouTube
+faster-whisper     # Transcrição de áudio com Whisper (versão otimizada em CTranslate2)
+ffmpeg-python      # Wrapper Python para o FFmpeg
+python-dotenv      # Leitura de variáveis de ambiente do arquivo .env
