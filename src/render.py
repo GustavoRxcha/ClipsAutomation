@@ -1,4 +1,5 @@
 import os
+import re
 import ctypes
 import textwrap
 import subprocess
@@ -10,13 +11,14 @@ import subprocess
 
 def _short_path(path: str) -> str:
     """
-    Converte um caminho Windows para o formato curto 8.3 (ex: PROJET~1),
-    eliminando espaços que quebrariam o filtro 'subtitles' do FFmpeg.
-    Retorna o caminho original se a conversão falhar.
+    No Windows converte para 8.3 para evitar espaços no filtro subtitles do FFmpeg.
+    No macOS/Linux retorna o caminho sem modificação (barras e colons são tratados na linha 174).
     """
-    buf = ctypes.create_unicode_buffer(32768)
-    ctypes.windll.kernel32.GetShortPathNameW(path, buf, 32768)
-    return buf.value if buf.value else path
+    if os.name == 'nt':
+        buf = ctypes.create_unicode_buffer(32768)
+        ctypes.windll.kernel32.GetShortPathNameW(path, buf, 32768)
+        return buf.value if buf.value else path
+    return path
 
 
 # ---------------------------------------------------------------------------
@@ -157,8 +159,12 @@ def renderizar_cortes(
 
     arquivos_gerados = []
 
+    # Sanitiza o nome base removendo vírgulas e aspas — caracteres que quebram
+    # o parsing de filtros e nomes de arquivo no FFmpeg.
+    nome_seguro = re.sub(r"[,'\"]", '', nome_base).strip()
+
     for i, (inicio, fim) in enumerate(cortes, 1):
-        arquivo_saida = os.path.join(pasta_output, f"{nome_base}_corte_{i:02d}.mp4")
+        arquivo_saida = os.path.join(pasta_output, f"{nome_seguro}_corte_{i:02d}.mp4")
 
         # Nome simples sem espaços para o SRT temporário — espaços no caminho
         # quebram o filtro 'subtitles' do FFmpeg no Windows.
@@ -167,10 +173,7 @@ def renderizar_cortes(
         # Gera o SRT individual e sincronizado para este corte
         _gerar_srt_do_corte(caminho_srt_original, caminho_srt_corte, inicio, fim)
 
-        # Converte para caminho curto 8.3 do Windows (sem espaços) e depois
-        # escapa apenas o ':' da letra do drive — o FFmpeg exige esse formato.
         srt_short = _short_path(os.path.abspath(caminho_srt_corte))
-        srt_ffmpeg = srt_short.replace('\\', '/').replace(':', '\\:')
 
         print(f"[*] Renderizando corte {i}/{len(cortes)} (de {inicio:.2f}s até {fim:.2f}s)...")
 
@@ -182,16 +185,26 @@ def renderizar_cortes(
                 "Alignment=2,MarginV=70"
             )
 
-            # Constrói o -vf manualmente para ter controle total do escape.
-            # ffmpeg-python re-escaparia nosso \: para \\\: ao usar .filter().
-            vf = f"crop=ih*9/16:ih,subtitles='{srt_ffmpeg}':force_style='{estilo_legenda}'"
+            if os.name == 'nt':
+                # Windows: caminho 8.3 sem espaços; escapa '\' e ':' do drive.
+                srt_ffmpeg = srt_short.replace('\\', '/').replace(':', '\\:')
+                vf = f"crop=ih*9/16:ih,scale=1080:1920,subtitles='{srt_ffmpeg}':force_style='{estilo_legenda}'"
+            else:
+                # macOS/Linux: o parser lavfi divide o filterchain por ',' ANTES de
+                # processar aspas — os ',' dentro de force_style quebram o parsing.
+                # Solução: escapar cada ',' como '\,' (literal para o filterchain parser)
+                # e usar 'filename=' explícito para evitar ambiguidade no positional arg.
+                srt_ffmpeg = srt_short.replace(':', '\\:').replace(' ', '\\ ')
+                estilo_escapado = estilo_legenda.replace(',', '\\,')
+                vf = f"crop=ih*9/16:ih,scale=1080:1920,subtitles=filename={srt_ffmpeg}:force_style={estilo_escapado}"
 
             cmd = [
                 'ffmpeg',
                 '-ss', str(inicio), '-to', str(fim),
                 '-i', caminho_video,
                 '-vf', vf,
-                '-vcodec', 'libx264', '-acodec', 'aac',
+                '-vcodec', 'libx264', '-crf', '18', '-preset', 'medium',
+                '-acodec', 'aac', '-b:a', '192k',
                 '-loglevel', 'error',
                 '-y', arquivo_saida,
             ]

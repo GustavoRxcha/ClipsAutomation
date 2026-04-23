@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -m venv venv)",
+      "Bash(venv/bin/pip install *)",
+      "Bash(ffmpeg -filters)",
+      "Bash(ffmpeg -buildconf)",
+      "Bash(ffmpeg -version)",
+      "Bash(brew list *)",
+      "Bash(brew options *)",
+      "Bash(brew info *)"
+    ]
+  }
+}

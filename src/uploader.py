@@ -65,7 +65,9 @@ def fazer_upload_shorts(arquivos: list, titulo_base: str) -> list:
     urls = []
 
     for i, caminho in enumerate(arquivos, 1):
-        titulo = f"{titulo_base} #{i} #shorts"
+        sufixo = f" #{i} #shorts"
+        max_base = 100 - len(sufixo)
+        titulo = titulo_base[:max_base].rstrip() + sufixo
         delay_horas = (i - 1) * _INTERVALO_HORAS
 
         if delay_horas == 0:
@@ -85,7 +87,7 @@ def fazer_upload_shorts(arquivos: list, titulo_base: str) -> list:
                 "description": "#shorts",
                 "categoryId": "22",
             },
-            "status": status,
+            "status": {**status, "selfDeclaredMadeForKids": False},
         }
 
         print(f"[*] Enviando {i}/{len(arquivos)}: {os.path.basename(caminho)} — {horario_info} ...")

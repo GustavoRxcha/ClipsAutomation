@@ -14,9 +14,9 @@ ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 TEMP_DIR = os.path.join(BASE_DIR, "temp")
 OUTPUT_DIR = os.path.join(BASE_DIR, "output")
 
-# Adiciona o diretório bin/ ao PATH do processo para que o ffmpeg seja encontrado
-# automaticamente, sem necessidade de instalação global.
-os.environ["PATH"] = BIN_DIR + os.pathsep + os.environ.get("PATH", "")
+# No Windows usa o ffmpeg bundled em bin/; no macOS/Linux usa o do PATH do sistema.
+if os.path.isdir(BIN_DIR):
+    os.environ["PATH"] = BIN_DIR + os.pathsep + os.environ.get("PATH", "")
 
 # Carrega variáveis do .env (se existir)
 load_dotenv(os.path.join(BASE_DIR, ".env"))
