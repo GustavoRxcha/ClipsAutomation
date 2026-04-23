@@ -29,6 +29,7 @@ from src.downloader import baixar_video
 from src.transcriber import transcrever_video
 from src.editor import analisar_corte
 from src.render import renderizar_cortes
+from src.uploader import fazer_upload_shorts
 
 # ---------------------------------------------------------------------------
 # Configurações via .env (com valores padrão)
@@ -37,6 +38,7 @@ from src.render import renderizar_cortes
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "small")
 DURACAO_ALVO = float(os.getenv("DURACAO_ALVO_SEGUNDOS", "90"))
 DURACAO_MINIMA = float(os.getenv("DURACAO_MINIMA_SEGUNDOS", "45"))
+YOUTUBE_PRIVACY = os.getenv("YOUTUBE_PRIVACY", "private")
 
 
 # ---------------------------------------------------------------------------
@@ -117,7 +119,19 @@ def main():
         print(f"  CONCLUÍDO! {len(arquivos_finais)} corte(s) gerado(s).")
         print(f"  Pasta de saída: {OUTPUT_DIR}")
         print(f"{'=' * 45}")
-        _limpar_pastas([ASSETS_DIR, TEMP_DIR])
+
+        # FASE 5 — Upload (opcional)
+        resposta = input("\nFazer upload para YouTube Shorts? (s/n): ").strip().lower()
+        if resposta == "s":
+            print("\n--- FASE 5: UPLOAD PARA YOUTUBE SHORTS ---")
+            titulo_base = os.path.basename(caminho_video).rsplit('.', 1)[0]
+            urls = fazer_upload_shorts(arquivos_finais, titulo_base)
+            if urls:
+                print(f"\n[+] {len(urls)} vídeo(s) enviado(s):")
+                for url in urls:
+                    print(f"    {url}")
+
+        _limpar_pastas([ASSETS_DIR, TEMP_DIR, OUTPUT_DIR])
     else:
         print("\n[-] Nenhum arquivo foi gerado. Verifique os erros acima.")
 

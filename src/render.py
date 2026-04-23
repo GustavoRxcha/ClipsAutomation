@@ -179,7 +179,7 @@ def renderizar_cortes(
                 "FontName=Arial,Bold=1,FontSize=10,"
                 "PrimaryColour=&H00FFFF,OutlineColour=&H40000000,"
                 "BorderStyle=1,Outline=1,Shadow=1,"
-                "Alignment=2,MarginV=50"
+                "Alignment=2,MarginV=70"
             )
 
             # Constrói o -vf manualmente para ter controle total do escape.

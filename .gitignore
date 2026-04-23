@@ -20,3 +20,7 @@ bin/
 
 # Modelos do Whisper baixados pelo faster-whisper
 models/
+
+# Credenciais OAuth do YouTube (não versionar)
+client_secrets.json
+token.json
