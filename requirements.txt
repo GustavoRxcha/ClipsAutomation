@@ -7,3 +7,4 @@ ffmpeg-python      # Wrapper Python para o FFmpeg
 python-dotenv      # Leitura de variáveis de ambiente do arquivo .env
 google-api-python-client  # Cliente da API do Google (YouTube Data API v3)
 google-auth-oauthlib      # Fluxo OAuth2 para autenticação do Google
+tiktok-uploader           # Upload de vídeos para o TikTok via cookies (opcional)

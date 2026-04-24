@@ -31,6 +31,12 @@ from src.editor import analisar_corte
 from src.render import renderizar_cortes
 from src.uploader import fazer_upload_shorts
 
+try:
+    from src.uploader_tiktok import fazer_upload_tiktok
+    _TIKTOK_DISPONIVEL = True
+except ImportError:
+    _TIKTOK_DISPONIVEL = False
+
 # ---------------------------------------------------------------------------
 # Configurações via .env (com valores padrão)
 # ---------------------------------------------------------------------------
@@ -120,16 +126,28 @@ def main():
         print(f"  Pasta de saída: {OUTPUT_DIR}")
         print(f"{'=' * 45}")
 
+        titulo_base = os.path.basename(caminho_video).rsplit('.', 1)[0]
+
         # FASE 5 — Upload (opcional)
         resposta = input("\nFazer upload para YouTube Shorts? (s/n): ").strip().lower()
         if resposta == "s":
             print("\n--- FASE 5: UPLOAD PARA YOUTUBE SHORTS ---")
-            titulo_base = os.path.basename(caminho_video).rsplit('.', 1)[0]
             urls = fazer_upload_shorts(arquivos_finais, titulo_base)
             if urls:
                 print(f"\n[+] {len(urls)} vídeo(s) enviado(s):")
                 for url in urls:
                     print(f"    {url}")
+
+        # FASE 6 — Upload TikTok (opcional)
+        if _TIKTOK_DISPONIVEL:
+            resposta_tk = input("\nFazer upload para o TikTok? (s/n): ").strip().lower()
+            if resposta_tk == "s":
+                print("\n--- FASE 6: UPLOAD PARA TIKTOK ---")
+                ids_tk = fazer_upload_tiktok(arquivos_finais, titulo_base)
+                if ids_tk:
+                    print(f"\n[+] {len(ids_tk)} vídeo(s) enviado(s) ao TikTok:")
+                    for nome in ids_tk:
+                        print(f"    {nome}")
 
         _limpar_pastas([ASSETS_DIR, TEMP_DIR, OUTPUT_DIR])
     else:

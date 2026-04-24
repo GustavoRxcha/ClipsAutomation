@@ -24,3 +24,6 @@ models/
 # Credenciais OAuth do YouTube (não versionar)
 client_secrets.json
 token.json
+
+# Cookies de sessão do TikTok (não versionar)
+tiktok_cookies.json
