@@ -1,9 +1,12 @@
 import os
+import re
 import threading
-from datetime import datetime, timedelta
 
-_INTERVALO_HORAS = int(os.getenv("TIKTOK_INTERVALO_HORAS", "3"))
 _TITULO_MAX = 150  # TikTok aceita até 150 caracteres na descrição
+
+# Caminho base do projeto (dois níveis acima deste arquivo: src/ → raiz)
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_OUTPUT_TIKTOK_DIR = os.path.join(_BASE_DIR, "output_tiktok")
 
 
 def _carregar_lib():
@@ -15,82 +18,97 @@ def _carregar_lib():
         return None
 
 
-def fazer_upload_tiktok(arquivos: list, titulo_base: str) -> list:
+def _titulo_do_arquivo(nome_arquivo: str) -> str:
     """
-    Faz upload de cada MP4 para o TikTok com publicação agendada progressiva.
+    Deriva o título TikTok a partir do nome do arquivo.
 
-    Clipe 1 → publicado imediatamente.
-    Clipe N → agendado para (N-1) * 3 horas a partir do momento do upload.
+    Remove o sufixo _corte_NN (gerado por render.py), adiciona #tiktok,
+    e trunca para o máximo permitido pelo TikTok.
+    """
+    stem = os.path.splitext(nome_arquivo)[0]
+    stem_limpo = re.sub(r"_corte_\d+$", "", stem)
+    sufixo = " #tiktok"
+    max_base = _TITULO_MAX - len(sufixo)
+    return stem_limpo[:max_base].rstrip() + sufixo
 
-    Requer cookies exportados do TikTok salvos em tiktok_cookies.json na raiz
-    do projeto (formato Netscape/JSON compatível com tiktok-uploader).
 
-    Args:
-        arquivos:    Lista de caminhos absolutos dos clipes gerados.
-        titulo_base: Título base derivado do vídeo original.
+def executar_ciclo_tiktok() -> None:
+    """
+    Processa UMA rodada de upload TikTok.
 
-    Returns:
-        Lista de identificadores (nome do arquivo) dos vídeos enviados com sucesso.
+    - Lê output_tiktok/ e seleciona o arquivo mais antigo (ordem FIFO).
+    - Faz o upload imediato (sem agendamento).
+    - Em caso de sucesso, exclui o arquivo.
+    - Em caso de falha, mantém o arquivo para nova tentativa.
+
+    Projetado para ser chamado repetidamente via cron / launchd:
+        python tiktok_runner.py
     """
     upload_video = _carregar_lib()
     if upload_video is None:
         print("[-] Biblioteca tiktok-uploader não instalada.")
         print("[-] Execute: pip install tiktok-uploader")
-        return []
+        return
 
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    cookies_path = os.path.join(base_dir, "tiktok_cookies.json")
-
+    cookies_path = os.path.join(_BASE_DIR, "tiktok_cookies.json")
     if not os.path.exists(cookies_path):
         print(f"[-] tiktok_cookies.json não encontrado em: {cookies_path}")
         print("[-] Exporte seus cookies do TikTok e salve na raiz do projeto.")
         print("[-] Use uma extensão como 'Get cookies.txt LOCALLY' e renomeie para tiktok_cookies.json.")
-        return []
+        return
 
-    print("\n[*] Iniciando uploads para o TikTok...")
+    # Listar arquivos de vídeo na fila
+    if not os.path.isdir(_OUTPUT_TIKTOK_DIR):
+        print("[*] output_tiktok/ vazia. Nada a fazer.")
+        return
 
-    agora = datetime.utcnow()  # naive UTC — exigido pela tiktok-uploader
-    enviados = []
+    arquivos = [
+        os.path.join(_OUTPUT_TIKTOK_DIR, f)
+        for f in os.listdir(_OUTPUT_TIKTOK_DIR)
+        if os.path.isfile(os.path.join(_OUTPUT_TIKTOK_DIR, f))
+        and f.lower().endswith(".mp4")
+    ]
 
-    for i, caminho in enumerate(arquivos, 1):
-        sufixo = " #tiktok"
-        max_base = _TITULO_MAX - len(sufixo)
-        descricao = titulo_base[:max_base].rstrip() + sufixo
+    if not arquivos:
+        print("[*] output_tiktok/ vazia. Nada a fazer.")
+        return
 
-        delay_horas = (i - 1) * _INTERVALO_HORAS
+    # Seleciona o arquivo mais antigo (FIFO)
+    arquivos.sort(key=os.path.getmtime)
+    caminho = arquivos[0]
+    nome = os.path.basename(caminho)
 
-        if delay_horas == 0:
-            schedule_dt = None
-            horario_info = "publicação imediata"
+    descricao = _titulo_do_arquivo(nome)
+    restantes = len(arquivos) - 1
+
+    print(f"\n[*] Iniciando upload TikTok: {nome}")
+    print(f"[*] Descrição: {descricao}")
+    print(f"[*] Restantes na fila após este: {restantes}")
+
+    kwargs = dict(filename=caminho, description=descricao, cookies=cookies_path, headless=True)
+    resultado: dict = {}
+
+    def _executar(kw=kwargs, res=resultado):
+        try:
+            res["falhas"] = upload_video(**kw)
+        except Exception as exc:
+            res["erro"] = exc
+
+    # Upload em thread própria para garantir contexto Playwright limpo
+    t = threading.Thread(target=_executar)
+    t.start()
+    t.join()
+
+    if "erro" in resultado:
+        print(f"[-] Erro inesperado ao enviar: {resultado['erro']}")
+        print(f"[-] Falha — arquivo mantido para retry: {nome}")
+    elif resultado.get("falhas"):
+        print(f"[-] Erro ao enviar: {resultado['falhas']}")
+        print(f"[-] Falha — arquivo mantido para retry: {nome}")
+    else:
+        try:
+            os.remove(caminho)
+        except OSError as exc:
+            print(f"[-] Upload OK, mas falha ao remover arquivo: {exc}")
         else:
-            schedule_dt = agora + timedelta(hours=delay_horas)
-            horario_info = f"agendado para {schedule_dt.strftime('%d/%m/%Y %H:%M')} UTC (+{delay_horas}h)"
-
-        print(f"[*] Enviando {i}/{len(arquivos)}: {os.path.basename(caminho)} — {horario_info} ...")
-
-        kwargs = dict(filename=caminho, description=descricao, cookies=cookies_path)
-        if schedule_dt is not None:
-            kwargs["schedule"] = schedule_dt
-
-        resultado: dict = {}
-
-        def _executar(kw=kwargs, res=resultado):
-            try:
-                res["falhas"] = upload_video(**kw)
-            except Exception as exc:
-                res["erro"] = exc
-
-        # Cada upload roda em thread própria para garantir contexto Playwright limpo
-        t = threading.Thread(target=_executar)
-        t.start()
-        t.join()
-
-        if "erro" in resultado:
-            print(f"[-] Erro inesperado ao enviar corte {i}: {resultado['erro']}")
-        elif resultado.get("falhas"):
-            print(f"[-] Erro ao enviar corte {i}: {resultado['falhas']}")
-        else:
-            print(f"[+] Corte {i} enviado com sucesso ({horario_info})")
-            enviados.append(os.path.basename(caminho))
-
-    return enviados
+            print(f"[+] Corte enviado e removido: {nome}")

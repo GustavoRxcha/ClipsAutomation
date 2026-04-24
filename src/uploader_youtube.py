@@ -1,5 +1,30 @@
+import json
 import os
+import subprocess
 from datetime import datetime, timezone, timedelta
+
+_DURACAO_MAXIMA_SHORTS = 60  # segundos — YouTube Shorts exige ≤ 60s
+
+
+def _duracao_video(caminho: str) -> float:
+    """Retorna a duração em segundos do vídeo usando ffprobe."""
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe", "-v", "quiet",
+                "-print_format", "json",
+                "-show_format",
+                caminho,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        data = json.loads(result.stdout)
+        return float(data.get("format", {}).get("duration", 0))
+    except Exception as e:
+        print(f"[-] Não foi possível ler duração de {os.path.basename(caminho)}: {e}")
+        return 0.0
 
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -63,12 +88,22 @@ def fazer_upload_shorts(arquivos: list, titulo_base: str) -> list:
 
     agora = datetime.now(timezone.utc)
     urls = []
+    ordem_upload = 0  # conta apenas os vídeos que de fato serão enviados
 
     for i, caminho in enumerate(arquivos, 1):
-        sufixo = f" #{i} #shorts"
+        nome = os.path.basename(caminho)
+
+        # Verifica duração — YouTube Shorts exige ≤ 60s
+        duracao = _duracao_video(caminho)
+        if duracao > _DURACAO_MAXIMA_SHORTS:
+            print(f"[*] Ignorando {nome} para YouTube ({duracao:.0f}s > {_DURACAO_MAXIMA_SHORTS}s) — será enviado ao TikTok.")
+            continue
+
+        ordem_upload += 1
+        sufixo = f" #{ordem_upload} #shorts"
         max_base = 100 - len(sufixo)
         titulo = titulo_base[:max_base].rstrip() + sufixo
-        delay_horas = (i - 1) * _INTERVALO_HORAS
+        delay_horas = (ordem_upload - 1) * _INTERVALO_HORAS
 
         if delay_horas == 0:
             status = {"privacyStatus": "public"}
@@ -90,7 +125,7 @@ def fazer_upload_shorts(arquivos: list, titulo_base: str) -> list:
             "status": {**status, "selfDeclaredMadeForKids": False},
         }
 
-        print(f"[*] Enviando {i}/{len(arquivos)}: {os.path.basename(caminho)} — {horario_info} ...")
+        print(f"[*] Enviando {ordem_upload}: {nome} — {horario_info} ...")
         try:
             media = MediaFileUpload(caminho, mimetype="video/mp4", resumable=True, chunksize=_CHUNK_SIZE)
             request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
@@ -101,7 +136,7 @@ def fazer_upload_shorts(arquivos: list, titulo_base: str) -> list:
 
             video_id = response.get("id", "")
             url = f"https://www.youtube.com/shorts/{video_id}"
-            print(f"[+] Corte {i} enviado: {url} ({horario_info})")
+            print(f"[+] Corte {ordem_upload} enviado: {url} ({horario_info})")
             urls.append(url)
 
         except HttpError as e:

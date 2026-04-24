@@ -13,6 +13,7 @@ BIN_DIR = os.path.join(BASE_DIR, "bin")
 ASSETS_DIR = os.path.join(BASE_DIR, "assets")
 TEMP_DIR = os.path.join(BASE_DIR, "temp")
 OUTPUT_DIR = os.path.join(BASE_DIR, "output")
+OUTPUT_TIKTOK_DIR = os.path.join(BASE_DIR, "output_tiktok")
 
 # No Windows usa o ffmpeg bundled em bin/; no macOS/Linux usa o do PATH do sistema.
 if os.path.isdir(BIN_DIR):
@@ -29,13 +30,7 @@ from src.downloader import baixar_video
 from src.transcriber import transcrever_video
 from src.editor import analisar_corte
 from src.render import renderizar_cortes
-from src.uploader import fazer_upload_shorts
-
-try:
-    from src.uploader_tiktok import fazer_upload_tiktok
-    _TIKTOK_DISPONIVEL = True
-except ImportError:
-    _TIKTOK_DISPONIVEL = False
+from src.uploader_youtube import fazer_upload_shorts
 
 # ---------------------------------------------------------------------------
 # Configurações via .env (com valores padrão)
@@ -138,16 +133,15 @@ def main():
                 for url in urls:
                     print(f"    {url}")
 
-        # FASE 6 — Upload TikTok (opcional)
-        if _TIKTOK_DISPONIVEL:
-            resposta_tk = input("\nFazer upload para o TikTok? (s/n): ").strip().lower()
-            if resposta_tk == "s":
-                print("\n--- FASE 6: UPLOAD PARA TIKTOK ---")
-                ids_tk = fazer_upload_tiktok(arquivos_finais, titulo_base)
-                if ids_tk:
-                    print(f"\n[+] {len(ids_tk)} vídeo(s) enviado(s) ao TikTok:")
-                    for nome in ids_tk:
-                        print(f"    {nome}")
+                # Mover clipes para output_tiktok/ para upload posterior via tiktok_runner.py
+                os.makedirs(OUTPUT_TIKTOK_DIR, exist_ok=True)
+                movidos = 0
+                for arq in arquivos_finais:
+                    if os.path.isfile(arq):
+                        shutil.move(arq, OUTPUT_TIKTOK_DIR)
+                        movidos += 1
+                print(f"\n[*] Movendo {movidos} clipe(s) para output_tiktok/")
+                print(f"[*] Execute 'python tiktok_runner.py' para postar no TikTok.")
 
         _limpar_pastas([ASSETS_DIR, TEMP_DIR, OUTPUT_DIR])
     else:
