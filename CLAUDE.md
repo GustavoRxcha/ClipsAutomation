@@ -31,6 +31,7 @@ python main.py         # runs the full autonomous pipeline — no prompts
 | `YOUTUBE_CHANNEL_ID` | *(empty)* | Channel ID (`UC…`), `@handle`, or full URL — **required**; pipeline aborts if blank |
 | `YOUTUBE_CANAL_MAX_VIDEOS` | `20` | How many recent channel videos to evaluate when picking the most viral |
 | `YOUTUBE_PRIVACY` | `private` | Upload visibility (public/unlisted/private) |
+| `YOUTUBE_COOKIES_FILE` | *(empty)* | Absolute path to a Netscape-format YouTube cookies file — required when VPS IP is flagged as bot |
 | `TIKTOK_SESSION_ID` | *(empty)* | TikTok sessionid cookie — required for TikTok uploads; lasts ~60-90 days |
 | `TIKTOK_INTERVALO_HORAS` | `3` | Hours between each TikTok clip upload (staggered schedule) |
 
@@ -62,7 +63,7 @@ YOUTUBE_CHANNEL_ID (.env)
 
 ## Key Design Decisions
 
-- **pytubefix with `client='ANDROID_VR'`** — required to bypass YouTube web API restrictions.
+- **yt-dlp with `player_client: [ios, web]`** — replaces pytubefix; actively maintained against YouTube bot detection; VPS IPs may still be blocked without a cookies file (`YOUTUBE_COOKIES_FILE`).
 - **faster-whisper on CPU with int8 quantization** — balances speed and accuracy without GPU dependency.
 - **Staggered upload schedule** — 3-hour gaps between clips to optimize YouTube algorithm distribution.
 - The codebase and all user-facing strings are in Brazilian Portuguese.

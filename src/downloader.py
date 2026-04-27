@@ -1,9 +1,8 @@
 import os
-from pytubefix import YouTube
-from pytubefix.cli import on_progress
+import yt_dlp
 
 
-def baixar_video(url: str, pasta_destino: str) -> str:
+def baixar_video(url: str, pasta_destino: str) -> str | None:
     """
     Faz o download do vídeo do YouTube na resolução máxima disponível.
 
@@ -16,21 +15,60 @@ def baixar_video(url: str, pasta_destino: str) -> str:
     """
     print(f"[*] Iniciando o download do vídeo: {url}")
 
+    # Arquivo de cookies do YouTube (opcional) — exportar do browser em formato Netscape
+    # e configurar YOUTUBE_COOKIES_FILE no .env com o caminho absoluto do arquivo.
+    cookies_file = os.getenv("YOUTUBE_COOKIES_FILE", "").strip()
+
+    ydl_opts = {
+        # Melhor vídeo + áudio já mesclados; fallback para melhor disponível
+        "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+        "outtmpl": os.path.join(pasta_destino, "%(title)s.%(ext)s"),
+        "quiet": True,
+        "no_warnings": True,
+        "noprogress": False,
+        # Necessário para VPS: o yt-dlp usa apenas HTTP sem abrir browser
+        "extractor_args": {"youtube": {"player_client": ["ios", "web"]}},
+    }
+
+    if cookies_file and os.path.isfile(cookies_file):
+        ydl_opts["cookiefile"] = cookies_file
+        print(f"[*] Usando cookies de: {cookies_file}")
+
     try:
-        # Usamos o client ANDROID_VR para contornar restrições do YouTube na API web
-        yt = YouTube(url, on_progress_callback=on_progress, client='ANDROID_VR')
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            titulo = info.get("title", "video")
+            print(f"[*] Título encontrado: {titulo}")
+            print("[*] Baixando... (isso pode levar alguns segundos)")
 
-        print(f"[*] Título encontrado: {yt.title}")
+            ydl.download([url])
 
-        stream = yt.streams.get_highest_resolution()
+            # Reconstrói o caminho do arquivo gerado
+            nome_arquivo = ydl.prepare_filename(info)
+            # O yt-dlp pode alterar a extensão após merge; tenta extensões comuns
+            for ext in ("", ".mp4", ".mkv", ".webm"):
+                candidato = nome_arquivo if not ext else os.path.splitext(nome_arquivo)[0] + ext
+                if os.path.isfile(candidato):
+                    print(f"\n[+] Download concluído: {candidato}")
+                    return candidato
 
-        print("[*] Baixando... (isso pode levar alguns segundos)")
+            # Fallback: procura o arquivo mais recente na pasta de destino
+            arquivos = sorted(
+                (f for f in os.listdir(pasta_destino) if not f.endswith(".part")),
+                key=lambda f: os.path.getmtime(os.path.join(pasta_destino, f)),
+                reverse=True,
+            )
+            if arquivos:
+                caminho = os.path.join(pasta_destino, arquivos[0])
+                print(f"\n[+] Download concluído: {caminho}")
+                return caminho
 
-        arquivo_baixado = stream.download(output_path=pasta_destino)
+            print("\n[-] Arquivo baixado não encontrado após o download.")
+            return None
 
-        print(f"\n[+] Download concluído com sucesso: {arquivo_baixado}")
-        return arquivo_baixado
-
-    except Exception as e:
+    except yt_dlp.utils.DownloadError as e:
         print(f"\n[-] Erro ao baixar o vídeo: {e}")
+        return None
+    except Exception as e:
+        print(f"\n[-] Erro inesperado no download: {e}")
         return None
