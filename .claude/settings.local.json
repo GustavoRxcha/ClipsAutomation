@@ -13,7 +13,8 @@
       "Bash(chmod +x /Users/gustavorocha/Projetos/ClipsAutomation/setup_logrotate.sh)",
       "Bash(venv/bin/pip show *)",
       "Bash(venv/bin/python3 -c \"from pytubefix import YouTube; help\\(YouTube.__init__\\)\")",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }
