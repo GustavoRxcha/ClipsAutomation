@@ -39,6 +39,9 @@ youtube_cookies.txt
 
 # macOS metadata
 .DS_Store
- 
+
+# Configurações locais do Claude Code
+.claude/
+
 # macOS launchd
 *.plist
