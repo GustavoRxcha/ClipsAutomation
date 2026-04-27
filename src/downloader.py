@@ -27,8 +27,6 @@ def baixar_video(url: str, pasta_destino: str) -> str | None:
         "quiet": True,
         "no_warnings": True,
         "noprogress": False,
-        # Necessário para VPS: o yt-dlp usa apenas HTTP sem abrir browser
-        "extractor_args": {"youtube": {"player_client": ["ios", "web"]}},
     }
 
     if cookies_file and os.path.isfile(cookies_file):
