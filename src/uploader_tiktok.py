@@ -2,6 +2,8 @@ import os
 import re
 import threading
 
+from .tiktok_auth import garantir_sessao
+
 _TITULO_MAX = 150  # TikTok aceita até 150 caracteres na descrição
 
 # Caminho base do projeto (dois níveis acima deste arquivo: src/ → raiz)
@@ -36,6 +38,7 @@ def executar_ciclo_tiktok() -> None:
     """
     Processa UMA rodada de upload TikTok.
 
+    - Verifica autenticação via TIKTOK_SESSION_ID do .env (ou cookies.json).
     - Lê output_tiktok/ e seleciona o arquivo mais antigo (ordem FIFO).
     - Faz o upload imediato (sem agendamento).
     - Em caso de sucesso, exclui o arquivo.
@@ -50,14 +53,18 @@ def executar_ciclo_tiktok() -> None:
         print("[-] Execute: pip install tiktok-uploader")
         return
 
-    cookies_path = os.path.join(_BASE_DIR, "tiktok_cookies.json")
-    if not os.path.exists(cookies_path):
-        print(f"[-] tiktok_cookies.json não encontrado em: {cookies_path}")
-        print("[-] Exporte seus cookies do TikTok e salve na raiz do projeto.")
-        print("[-] Use uma extensão como 'Get cookies.txt LOCALLY' e renomeie para tiktok_cookies.json.")
+    # -----------------------------------------------------------------------
+    # Autenticação — sessionid do .env tem prioridade sobre cookies.json
+    # -----------------------------------------------------------------------
+    session_id = os.getenv("TIKTOK_SESSION_ID", "").strip()
+
+    if not garantir_sessao(session_id):
+        print("[-] Upload abortado — sem autenticação TikTok válida.")
         return
 
-    # Listar arquivos de vídeo na fila
+    # -----------------------------------------------------------------------
+    # Fila de upload
+    # -----------------------------------------------------------------------
     if not os.path.isdir(_OUTPUT_TIKTOK_DIR):
         print("[*] output_tiktok/ vazia. Nada a fazer.")
         return
@@ -85,7 +92,20 @@ def executar_ciclo_tiktok() -> None:
     print(f"[*] Descrição: {descricao}")
     print(f"[*] Restantes na fila após este: {restantes}")
 
-    kwargs = dict(filename=caminho, description=descricao, cookies=cookies_path, headless=True)
+    kwargs = dict(
+        filename=caminho,
+        description=descricao,
+        cookies_list=[{
+            "name": "sessionid",
+            "value": session_id,
+            "domain": ".tiktok.com",
+            "path": "/",
+            "secure": True,
+            "httpOnly": True,
+            "sameSite": "None",
+        }],
+        headless=True,
+    )
     resultado: dict = {}
 
     def _executar(kw=kwargs, res=resultado):
@@ -100,7 +120,12 @@ def executar_ciclo_tiktok() -> None:
     t.join()
 
     if "erro" in resultado:
-        print(f"[-] Erro inesperado ao enviar: {resultado['erro']}")
+        erro = resultado["erro"]
+        print(f"[-] Erro inesperado ao enviar: {erro}")
+        # Detecta erro de autenticação para avisar sobre sessionid expirado
+        if any(kw in str(erro).lower() for kw in ("auth", "session", "login", "403", "cookie")):
+            print("[!] Erro pode indicar sessionid expirado.")
+            print("[!] Atualize TIKTOK_SESSION_ID no .env ou execute: python tiktok_setup.py")
         print(f"[-] Falha — arquivo mantido para retry: {nome}")
     elif resultado.get("falhas"):
         print(f"[-] Erro ao enviar: {resultado['falhas']}")

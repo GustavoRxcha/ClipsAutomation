@@ -31,15 +31,17 @@ from src.transcriber import transcrever_video
 from src.editor import analisar_corte
 from src.render import renderizar_cortes
 from src.uploader_youtube import fazer_upload_shorts
+from src.finder import buscar_video_canal, registrar_video_processado, extrair_video_id
 
 # ---------------------------------------------------------------------------
 # Configurações via .env (com valores padrão)
 # ---------------------------------------------------------------------------
 
-WHISPER_MODEL = os.getenv("WHISPER_MODEL", "small")
-DURACAO_ALVO = float(os.getenv("DURACAO_ALVO_SEGUNDOS", "90"))
-DURACAO_MINIMA = float(os.getenv("DURACAO_MINIMA_SEGUNDOS", "45"))
-YOUTUBE_PRIVACY = os.getenv("YOUTUBE_PRIVACY", "private")
+WHISPER_MODEL     = os.getenv("WHISPER_MODEL", "small")
+DURACAO_ALVO      = float(os.getenv("DURACAO_ALVO_SEGUNDOS", "90"))
+DURACAO_MINIMA    = float(os.getenv("DURACAO_MINIMA_SEGUNDOS", "45"))
+YOUTUBE_CHANNEL_ID = os.getenv("YOUTUBE_CHANNEL_ID", "").strip()
+CANAL_MAX_VIDEOS  = int(os.getenv("YOUTUBE_CANAL_MAX_VIDEOS", "20"))
 
 
 # ---------------------------------------------------------------------------
@@ -48,7 +50,7 @@ YOUTUBE_PRIVACY = os.getenv("YOUTUBE_PRIVACY", "private")
 
 def _configurar_pastas():
     """Cria as pastas necessárias se não existirem."""
-    for pasta in [ASSETS_DIR, TEMP_DIR, OUTPUT_DIR]:
+    for pasta in [ASSETS_DIR, TEMP_DIR, OUTPUT_DIR, OUTPUT_TIKTOK_DIR]:
         os.makedirs(pasta, exist_ok=True)
 
 
@@ -72,20 +74,30 @@ def _limpar_pastas(pastas: list):
 
 
 # ---------------------------------------------------------------------------
-# Fluxo principal
+# Fluxo principal — totalmente autônomo
 # ---------------------------------------------------------------------------
 
 def main():
-    print("=" * 45)
+    print("=" * 50)
     print("   GERADOR DE CORTES AUTOMATIZADO")
-    print("=" * 45)
+    print("=" * 50)
 
     _configurar_pastas()
 
-    url_video = input("\nInsira o link do vídeo do YouTube: ").strip()
-    if not url_video:
-        print("[-] Nenhuma URL informada. Encerrando.")
+    # Valida canal configurado
+    if not YOUTUBE_CHANNEL_ID:
+        print("[-] YOUTUBE_CHANNEL_ID não configurado no .env. Encerrando.")
         return
+
+    # SELEÇÃO AUTOMÁTICA — vídeo mais viral do canal
+    print(f"\n[*] Canal: {YOUTUBE_CHANNEL_ID}  |  Analisando últimos {CANAL_MAX_VIDEOS} vídeo(s) ...")
+    video_canal = buscar_video_canal(YOUTUBE_CHANNEL_ID, max_videos=CANAL_MAX_VIDEOS)
+    if not video_canal:
+        print("[-] Nenhum vídeo disponível no canal. Encerrando.")
+        return
+
+    url_video = video_canal["url"]
+    video_id  = extrair_video_id(url_video)
 
     # FASE 1 — Download
     print("\n--- FASE 1: DOWNLOAD ---")
@@ -93,17 +105,23 @@ def main():
     if not caminho_video:
         return
 
+    # Registra no histórico somente após download bem-sucedido
+    if video_id:
+        registrar_video_processado(video_id)
+
     # FASE 2 — Transcrição
     print("\n--- FASE 2: TRANSCRIÇÃO ---")
     caminho_txt = transcrever_video(caminho_video, pasta_destino=TEMP_DIR, modelo=WHISPER_MODEL)
     if not caminho_txt:
+        _limpar_pastas([ASSETS_DIR, TEMP_DIR])
         return
 
     # FASE 3 — Análise de Corte
     print("\n--- FASE 3: ANÁLISE DE CORTE ---")
     cortes = analisar_corte(caminho_txt, duracao_alvo=DURACAO_ALVO, duracao_minima=DURACAO_MINIMA)
     if not cortes:
-        print("\n[-] Nenhum corte gerado. Encerrando.")
+        print("[-] Nenhum corte gerado. Encerrando.")
+        _limpar_pastas([ASSETS_DIR, TEMP_DIR])
         return
 
     # FASE 4 — Renderização
@@ -115,37 +133,44 @@ def main():
         pasta_output=OUTPUT_DIR,
     )
 
-    if arquivos_finais:
-        print(f"\n{'=' * 45}")
-        print(f"  CONCLUÍDO! {len(arquivos_finais)} corte(s) gerado(s).")
-        print(f"  Pasta de saída: {OUTPUT_DIR}")
-        print(f"{'=' * 45}")
+    if not arquivos_finais:
+        print("[-] Nenhum arquivo foi gerado. Verifique os erros acima.")
+        _limpar_pastas([ASSETS_DIR, TEMP_DIR])
+        return
 
-        titulo_base = os.path.basename(caminho_video).rsplit('.', 1)[0]
+    print(f"\n{'=' * 50}")
+    print(f"  RENDERIZAÇÃO CONCLUÍDA! {len(arquivos_finais)} corte(s) gerado(s).")
+    print(f"{'=' * 50}")
 
-        # FASE 5 — Upload (opcional)
-        resposta = input("\nFazer upload para YouTube Shorts? (s/n): ").strip().lower()
-        if resposta == "s":
-            print("\n--- FASE 5: UPLOAD PARA YOUTUBE SHORTS ---")
-            urls = fazer_upload_shorts(arquivos_finais, titulo_base)
-            if urls:
-                print(f"\n[+] {len(urls)} vídeo(s) enviado(s):")
-                for url in urls:
-                    print(f"    {url}")
+    titulo_base = os.path.basename(caminho_video).rsplit(".", 1)[0]
 
-                # Mover clipes para output_tiktok/ para upload posterior via tiktok_runner.py
-                os.makedirs(OUTPUT_TIKTOK_DIR, exist_ok=True)
-                movidos = 0
-                for arq in arquivos_finais:
-                    if os.path.isfile(arq):
-                        shutil.move(arq, OUTPUT_TIKTOK_DIR)
-                        movidos += 1
-                print(f"\n[*] Movendo {movidos} clipe(s) para output_tiktok/")
-                print(f"[*] Execute 'python tiktok_runner.py' para postar no TikTok.")
-
-        _limpar_pastas([ASSETS_DIR, TEMP_DIR, OUTPUT_DIR])
+    # FASE 5 — Upload para YouTube Shorts (automático)
+    print("\n--- FASE 5: UPLOAD PARA YOUTUBE SHORTS ---")
+    urls = fazer_upload_shorts(arquivos_finais, titulo_base)
+    if urls:
+        print(f"\n[+] {len(urls)} vídeo(s) enviado(s) ao YouTube:")
+        for url in urls:
+            print(f"    {url}")
     else:
-        print("\n[-] Nenhum arquivo foi gerado. Verifique os erros acima.")
+        print("[-] Nenhum vídeo enviado ao YouTube.")
+
+    # FASE 6 — Mover clipes para output_tiktok/
+    print("\n--- FASE 6: FILA TIKTOK ---")
+    movidos = 0
+    for arq in arquivos_finais:
+        if os.path.isfile(arq):
+            shutil.move(arq, OUTPUT_TIKTOK_DIR)
+            movidos += 1
+    if movidos:
+        print(f"[+] {movidos} clipe(s) movidos para output_tiktok/")
+        print("[*] Execute 'python tiktok_runner.py' para postar no TikTok.")
+
+    # FASE 7 — Limpeza de arquivos temporários
+    _limpar_pastas([ASSETS_DIR, TEMP_DIR, OUTPUT_DIR])
+
+    print(f"\n{'=' * 50}")
+    print("  PIPELINE CONCLUÍDO COM SUCESSO.")
+    print(f"{'=' * 50}\n")
 
 
 if __name__ == "__main__":

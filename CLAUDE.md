@@ -4,21 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Purpose
 
-ClipsAutomation is a Python pipeline that converts long YouTube videos into YouTube Shorts. It downloads a video, transcribes it, segments the transcript into clips, renders each clip at 9:16 with burned-in subtitles, and optionally uploads them to YouTube.
+ClipsAutomation is a fully autonomous Python pipeline that converts long YouTube videos into YouTube Shorts. It picks the most viral unwatched video from a configured channel, downloads it, transcribes it, segments the transcript into clips, renders each clip at 9:16 with burned-in subtitles, uploads them to YouTube (with staggered scheduling), queues them for TikTok, and cleans up — all without any user interaction.
 
 ## Setup & Run
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env   # configure environment variables
-python main.py         # prompts for a YouTube URL, then runs the full pipeline
+cp .env.example .env   # configure YOUTUBE_API_KEY, YOUTUBE_CHANNEL_ID, TIKTOK_SESSION_ID, etc.
+python main.py         # runs the full autonomous pipeline — no prompts
 ```
 
 **Required external dependency:** FFmpeg must be installed and available on PATH.
 
 **Google credentials:** Place `client_secrets.json` (OAuth2 from Google Cloud Console) in the project root before using the YouTube upload step.
 
-**TikTok credentials:** Export your TikTok session cookies and save them as `tiktok_cookies.json` in the project root. Use a browser extension such as "Get cookies.txt LOCALLY" on the TikTok website, then rename the exported file. Phase 6 is skipped silently if `tiktok-uploader` is not installed or if the cookies file is missing.
+**TikTok credentials:** Set `TIKTOK_SESSION_ID` in `.env` with the value of the `sessionid` cookie from tiktok.com (F12 → Application → Cookies). The sessionid lasts 60-90 days; renew it by repeating the same step.
 
 ## Environment Variables (`.env`)
 
@@ -27,7 +27,11 @@ python main.py         # prompts for a YouTube URL, then runs the full pipeline
 | `WHISPER_MODEL` | `small` | faster-whisper model size (tiny/base/small/medium/large) |
 | `DURACAO_ALVO_SEGUNDOS` | `90` | Target clip duration in seconds |
 | `DURACAO_MINIMA_SEGUNDOS` | `45` | Minimum clip duration — shorter clips are discarded |
+| `YOUTUBE_API_KEY` | *(empty)* | Public API key for YouTube Data API v3 — **required** for channel lookup |
+| `YOUTUBE_CHANNEL_ID` | *(empty)* | Channel ID (`UC…`), `@handle`, or full URL — **required**; pipeline aborts if blank |
+| `YOUTUBE_CANAL_MAX_VIDEOS` | `20` | How many recent channel videos to evaluate when picking the most viral |
 | `YOUTUBE_PRIVACY` | `private` | Upload visibility (public/unlisted/private) |
+| `TIKTOK_SESSION_ID` | *(empty)* | TikTok sessionid cookie — required for TikTok uploads; lasts ~60-90 days |
 | `TIKTOK_INTERVALO_HORAS` | `3` | Hours between each TikTok clip upload (staggered schedule) |
 
 ## Pipeline Architecture
@@ -35,13 +39,17 @@ python main.py         # prompts for a YouTube URL, then runs the full pipeline
 Each module in `src/` handles one stage and passes outputs to the next:
 
 ```
-YouTube URL
-  → downloader.py      → video file (assets/)
-  → transcriber.py     → transcript .txt + .srt (assets/)
-  → editor.py          → list of (start_sec, end_sec) tuples
-  → render.py          → individual MP4 clips (output/)
-  → uploader.py        → YouTube Shorts URLs        [Phase 5 — optional]
-  → uploader_tiktok.py → TikTok video identifiers   [Phase 6 — optional]
+YOUTUBE_CHANNEL_ID (.env)
+  → finder.py          → most viral unwatched video URL  [Phase 0 — auto]
+  → downloader.py      → video file (assets/)            [Phase 1]
+  → transcriber.py     → transcript .txt + .srt (temp/)  [Phase 2]
+  → editor.py          → list of (start_sec, end_sec)    [Phase 3]
+  → render.py          → MP4 clips (output/)             [Phase 4]
+  → uploader_youtube.py → YouTube Shorts URLs            [Phase 5 — skips clips > 60s]
+  → output_tiktok/     → queued for TikTok upload        [Phase 6]
+  → cleanup assets/ temp/ output/                        [Phase 7]
+
+  → tiktok_runner.py   → TikTok post (1 per cron run, from output_tiktok/ queue)
 ```
 
 **Segmentation logic (`editor.py`):** Parses `[start -> end] text` lines with regex, groups segments sequentially until reaching `DURACAO_ALVO_SEGUNDOS`, drops final group if under `DURACAO_MINIMA_SEGUNDOS`.
@@ -50,7 +58,7 @@ YouTube URL
 
 **Upload YouTube (`uploader.py`):** First clip is published immediately as public; subsequent clips are scheduled as private with 3-hour intervals. OAuth2 token cached in `token.json`.
 
-**Upload TikTok (`uploader_tiktok.py`):** Same staggered schedule (3-hour gaps). Authentication via session cookies stored in `tiktok_cookies.json`. Import is conditional — Phase 6 only appears in `main.py` if `tiktok-uploader` is installed.
+**Upload TikTok (`uploader_tiktok.py`):** One clip per run via FIFO queue in `output_tiktok/`. Authentication via `TIKTOK_SESSION_ID` in `.env`, passed directly as `cookies_list` to the uploader. Run via `tiktok_runner.py`, designed for cron/launchd scheduling.
 
 ## Key Design Decisions
 

@@ -1,12 +1,15 @@
 """
 tiktok_runner.py — Envia o próximo clipe da fila output_tiktok/ para o TikTok.
 
-Uso:
+Uso normal (cron / launchd a cada 3 horas):
     python tiktok_runner.py
 
-Execute este script manualmente (ou via cron/launchd a cada 3 horas) para postar
-um clipe por vez, evitando bloqueios anti-bot do TikTok por múltiplos uploads
-em sequência.
+Autenticação:
+    O bot usa TIKTOK_SESSION_ID do .env.
+    Quando o sessionid expirar (~60-90 dias):
+        1. Acesse tiktok.com no seu browser e faça login
+        2. F12 → Application → Cookies → tiktok.com → copie o valor de "sessionid"
+        3. Atualize TIKTOK_SESSION_ID no .env
 """
 
 import os
@@ -20,7 +23,8 @@ if BASE_DIR not in sys.path:
 from dotenv import load_dotenv
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
-from src.uploader_tiktok import executar_ciclo_tiktok
-
 if __name__ == "__main__":
+    args = sys.argv[1:]
+
+    from src.uploader_tiktok import executar_ciclo_tiktok
     executar_ciclo_tiktok()
