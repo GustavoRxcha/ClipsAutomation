@@ -12,7 +12,8 @@
       "Bash(find /Users/gustavorocha/Projetos/ClipsAutomation -not -path \"*/venv/*\" -not -path \"*/.git/*\" -name \"__pycache__\" -exec rm -rf {} +)",
       "Bash(chmod +x /Users/gustavorocha/Projetos/ClipsAutomation/setup_logrotate.sh)",
       "Bash(venv/bin/pip show *)",
-      "Bash(venv/bin/python3 -c \"from pytubefix import YouTube; help\\(YouTube.__init__\\)\")"
+      "Bash(venv/bin/python3 -c \"from pytubefix import YouTube; help\\(YouTube.__init__\\)\")",
+      "WebFetch(domain:github.com)"
     ]
   }
 }
