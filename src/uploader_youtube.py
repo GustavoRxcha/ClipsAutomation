@@ -48,7 +48,11 @@ def _get_credentials(token_path: str, secrets_path: str) -> Credentials:
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(secrets_path, SCOPES)
-            creds = flow.run_console()
+            auth_url, _ = flow.authorization_url(prompt="consent")
+            print(f"\n[*] Acesse esta URL para autorizar o aplicativo:\n{auth_url}\n")
+            code = input("Cole o código de autorização aqui: ").strip()
+            flow.fetch_token(code=code)
+            creds = flow.credentials
         with open(token_path, "w") as fh:
             fh.write(creds.to_json())
 
