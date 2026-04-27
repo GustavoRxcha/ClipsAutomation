@@ -20,8 +20,8 @@ def baixar_video(url: str, pasta_destino: str) -> str | None:
     cookies_file = os.getenv("YOUTUBE_COOKIES_FILE", "").strip()
 
     ydl_opts = {
-        # Melhor qualidade disponível; força saída em mp4 após merge
-        "format": "bestvideo+bestaudio/best",
+        # Prefere mp4+m4a (sem transcodificação); fallback para melhor disponível
+        "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best",
         "merge_output_format": "mp4",
         "outtmpl": os.path.join(pasta_destino, "%(title)s.%(ext)s"),
         "quiet": True,
