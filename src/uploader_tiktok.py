@@ -104,6 +104,7 @@ def executar_ciclo_tiktok() -> None:
             "httpOnly": True,
             "sameSite": "None",
         }],
+        browser="chromium",
         headless=True,
     )
     resultado: dict = {}
