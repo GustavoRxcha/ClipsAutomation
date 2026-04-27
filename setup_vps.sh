@@ -24,11 +24,6 @@ python3 -m venv "$PROJECT_DIR/venv"
 "$PROJECT_DIR/venv/bin/pip" install --upgrade pip
 "$PROJECT_DIR/venv/bin/pip" install -r "$PROJECT_DIR/requirements.txt"
 
-echo ""
-echo "[2b/4] Instalando Chromium para o tiktok-uploader (Playwright)..."
-"$PROJECT_DIR/venv/bin/playwright" install-deps chromium
-"$PROJECT_DIR/venv/bin/playwright" install chromium
-
 # ---------------------------------------------------------------------------
 # 3. Pastas necessárias
 # ---------------------------------------------------------------------------
@@ -55,8 +50,11 @@ echo "============================================"
 echo ""
 echo "  [ ] .env                  — variáveis de ambiente (baseie-se no .env.example)"
 echo "  [ ] client_secrets.json   — credenciais OAuth2 do Google Cloud Console"
+echo "  [ ] token.json            — token OAuth gerado com gerar_token_youtube.py"
 echo "  [ ] historico_videos.json — histórico de vídeos já processados (opcional)"
 echo ""
 echo "  Após copiar os arquivos, execute:"
 echo "    bash $PROJECT_DIR/setup_cron.sh"
+echo ""
+echo "  NOTA: o upload para o TikTok roda no Mac via launchd — não é instalado na VPS."
 echo ""

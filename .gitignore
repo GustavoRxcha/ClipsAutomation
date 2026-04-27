@@ -14,6 +14,14 @@ __pycache__/
 assets/
 temp/
 output/
+output_tiktok/
+
+# Logs de execução
+logs/
+*.log
+
+# Histórico de vídeos processados (estado de runtime)
+historico_videos.json
 
 # Binários do FFmpeg (não versionar executáveis grandes)
 bin/
@@ -25,5 +33,9 @@ models/
 client_secrets.json
 token.json
 
-# Cookies de sessão do TikTok (não versionar)
+# Cookies de sessão (não versionar)
 tiktok_cookies.json
+youtube_cookies.txt
+
+# macOS metadata
+.DS_Store

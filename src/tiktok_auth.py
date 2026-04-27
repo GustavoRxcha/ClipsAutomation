@@ -6,7 +6,6 @@ Como obter o sessionid:
     2. F12 → Application → Cookies → tiktok.com → copie o valor de "sessionid"
     3. Cole em TIKTOK_SESSION_ID no .env
 
-    Ou execute: python tiktok_setup.py
 """
 
 
