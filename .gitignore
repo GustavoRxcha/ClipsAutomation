@@ -39,3 +39,6 @@ youtube_cookies.txt
 
 # macOS metadata
 .DS_Store
+ 
+# macOS launchd
+*.plist
