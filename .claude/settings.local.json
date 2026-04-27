@@ -9,7 +9,8 @@
       "Bash(brew list *)",
       "Bash(brew options *)",
       "Bash(brew info *)",
-      "Bash(find /Users/gustavorocha/Projetos/ClipsAutomation -not -path \"*/venv/*\" -not -path \"*/.git/*\" -name \"__pycache__\" -exec rm -rf {} +)"
+      "Bash(find /Users/gustavorocha/Projetos/ClipsAutomation -not -path \"*/venv/*\" -not -path \"*/.git/*\" -name \"__pycache__\" -exec rm -rf {} +)",
+      "Bash(chmod +x /Users/gustavorocha/Projetos/ClipsAutomation/setup_logrotate.sh)"
     ]
   }
 }

@@ -48,7 +48,7 @@ def _get_credentials(token_path: str, secrets_path: str) -> Credentials:
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(secrets_path, SCOPES)
-            creds = flow.run_local_server(port=0)
+            creds = flow.run_console()
         with open(token_path, "w") as fh:
             fh.write(creds.to_json())
 
