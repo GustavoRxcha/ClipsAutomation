@@ -24,6 +24,11 @@ python3 -m venv "$PROJECT_DIR/venv"
 "$PROJECT_DIR/venv/bin/pip" install --upgrade pip
 "$PROJECT_DIR/venv/bin/pip" install -r "$PROJECT_DIR/requirements.txt"
 
+echo ""
+echo "[2b/4] Instalando Chromium para o tiktok-uploader (Playwright)..."
+"$PROJECT_DIR/venv/bin/playwright" install-deps chromium
+"$PROJECT_DIR/venv/bin/playwright" install chromium
+
 # ---------------------------------------------------------------------------
 # 3. Pastas necessárias
 # ---------------------------------------------------------------------------

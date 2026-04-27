@@ -125,7 +125,7 @@ def executar_ciclo_tiktok() -> None:
         # Detecta erro de autenticação para avisar sobre sessionid expirado
         if any(kw in str(erro).lower() for kw in ("auth", "session", "login", "403", "cookie")):
             print("[!] Erro pode indicar sessionid expirado.")
-            print("[!] Atualize TIKTOK_SESSION_ID no .env ou execute: python tiktok_setup.py")
+            print("[!] Atualize TIKTOK_SESSION_ID no .env com o cookie 'sessionid' do tiktok.com.")
         print(f"[-] Falha — arquivo mantido para retry: {nome}")
     elif resultado.get("falhas"):
         print(f"[-] Erro ao enviar: {resultado['falhas']}")
