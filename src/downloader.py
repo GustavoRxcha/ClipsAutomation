@@ -27,6 +27,8 @@ def baixar_video(url: str, pasta_destino: str) -> str | None:
         "quiet": True,
         "no_warnings": True,
         "noprogress": False,
+        # A Python API não lê ~/.config/yt-dlp/config — js_runtimes deve ser passado aqui
+        "js_runtimes": ["node"],
     }
 
     if cookies_file and os.path.isfile(cookies_file):
