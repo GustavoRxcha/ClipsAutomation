@@ -32,5 +32,4 @@ def garantir_sessao(session_id: str) -> bool:
     print("      3. Copie o valor do cookie 'sessionid'")
     print("      4. Cole no .env: TIKTOK_SESSION_ID=valor_aqui")
     print()
-    print("    Ou execute: python tiktok_setup.py")
     return False
