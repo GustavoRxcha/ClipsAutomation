@@ -24,7 +24,28 @@ python main.py         # runs the full autonomous pipeline — no prompts
 
 **TikTok credentials:** Set `TIKTOK_SESSION_ID` in `.env` with the value of the `sessionid` cookie from tiktok.com (F12 → Application → Cookies). The sessionid lasts 60-90 days; renew it by repeating the same step.
 
-## VPS Setup
+## VPS Setup — Docker (recomendado)
+
+```bash
+# 1. Copie os arquivos de credenciais para a VPS
+scp .env client_secrets.json token.json root@<VPS>:/root/ClipsAutomation/
+
+# 2. Crie o arquivo de histórico se não existir
+echo "[]" > historico_videos.json
+
+# 3. Suba o container (build + start)
+docker compose up -d --build
+
+# Logs em tempo real
+docker compose logs -f
+
+# Rodar main.py manualmente (sem esperar o cron)
+docker compose exec clipsautomation python main.py
+```
+
+O cron interno dispara `main.py` diariamente às **07:00** no fuso configurado em `TZ` (padrão: `America/Sao_Paulo`). O volume `whisper_models` persiste os modelos do Whisper entre rebuilds.
+
+## VPS Setup — Bare metal (alternativo)
 
 ```bash
 bash setup_vps.sh     # installs system deps, Python venv, creates runtime dirs

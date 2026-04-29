@@ -1,0 +1,10 @@
+# Dependências da VPS — pipeline completo sem o uploader TikTok.
+# O tiktok-uploader (e o Playwright/Chromium que ele puxa) é
+# exclusivo do Mac; instalar na VPS só inflaria a imagem.
+
+yt-dlp
+faster-whisper
+ffmpeg-python
+python-dotenv
+google-api-python-client
+google-auth-oauthlib

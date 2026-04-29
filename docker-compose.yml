@@ -1,0 +1,50 @@
+services:
+  clipsautomation:
+    build: .
+    container_name: clipsautomation
+    restart: unless-stopped
+
+    # Todas as variáveis de configuração vêm do .env
+    env_file:
+      - .env
+
+    volumes:
+      # --------------------------------------------------------
+      # Logs — persistem no host para consulta externa
+      # --------------------------------------------------------
+      - ./logs:/app/logs
+
+      # --------------------------------------------------------
+      # Fila do TikTok — mantém o mesmo path que o Mac acessa
+      # via SCP (/root/ClipsAutomation/output_tiktok)
+      # --------------------------------------------------------
+      - /root/ClipsAutomation/output_tiktok:/app/output_tiktok
+
+      # --------------------------------------------------------
+      # Estado do pipeline — lista de vídeos já processados
+      # Crie o arquivo antes do primeiro uso:
+      #   echo "[]" > historico_videos.json
+      # --------------------------------------------------------
+      - ./historico_videos.json:/app/historico_videos.json
+
+      # --------------------------------------------------------
+      # Credenciais Google OAuth2 (não entram na imagem)
+      # --------------------------------------------------------
+      - ./client_secrets.json:/app/client_secrets.json
+      - ./token.json:/app/token.json
+
+      # --------------------------------------------------------
+      # Moldura PNG (opcional) — só necessário se MOLDURA_PATH
+      # estiver configurado no .env
+      # --------------------------------------------------------
+      - ./images:/app/images
+
+      # --------------------------------------------------------
+      # Modelos do Whisper — volume nomeado para persistir
+      # entre rebuilds (evita re-download a cada atualização)
+      # --------------------------------------------------------
+      - whisper_models:/app/models
+
+volumes:
+  # Cache dos modelos faster-whisper (~500 MB para o modelo "small")
+  whisper_models:

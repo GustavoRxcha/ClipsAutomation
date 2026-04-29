@@ -1,0 +1,53 @@
+# ============================================================
+# .dockerignore — exclui do contexto de build tudo que não
+# pertence à imagem (segurança + imagem mais enxuta).
+# ============================================================
+
+# Controle de versão
+.git/
+.gitignore
+
+# Ambiente virtual Python (dependências são instaladas no build)
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Pastas de runtime (montadas como volumes em produção)
+assets/
+temp/
+output/
+output_tiktok/
+logs/
+models/
+
+# Credenciais e estado (montados como volumes — nunca na imagem)
+.env
+client_secrets.json
+token.json
+historico_videos.json
+
+# TikTok — roda exclusivamente no Mac, não na VPS
+tiktok_runner.py
+tiktok_cookies.json
+youtube_cookies.txt
+src/uploader_tiktok.py
+src/vps_sync.py
+src/tiktok_auth.py
+
+# Binários externos
+bin/
+
+# macOS
+.DS_Store
+
+# Claude Code
+.claude/
+
+# macOS launchd (irrelevante na VPS)
+*.plist
+
+# Docker (não inclui os próprios arquivos de config no contexto)
+docker-compose.yml
+.dockerignore
