@@ -1,6 +1,6 @@
 services:
   clipsautomation:
-    build: .
+    image: gustavorxcha/clipsautomation:latest
     container_name: clipsautomation
     restart: unless-stopped
 
