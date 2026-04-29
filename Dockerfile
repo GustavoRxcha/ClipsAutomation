@@ -6,12 +6,20 @@
 FROM python:3.11-slim
 
 # ------------------------------------------------------------
-# Dependências de sistema
+# FFmpeg estático — inclui libass (legendas), libx264, etc.
+# ~70MB vs ~400MB do apt install ffmpeg (sem codecs desnecessários)
+# ------------------------------------------------------------
+COPY --from=mwader/static-ffmpeg:latest /ffmpeg  /usr/local/bin/ffmpeg
+COPY --from=mwader/static-ffmpeg:latest /ffprobe /usr/local/bin/ffprobe
+
+# ------------------------------------------------------------
+# Dependências de sistema (sem ffmpeg — já copiado acima)
+# libgomp1: necessário para CTranslate2 (faster-whisper)
 # ------------------------------------------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ffmpeg \
         cron \
         tzdata \
+        libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Fuso horário padrão (sobrescreva com TZ= no .env se necessário)
