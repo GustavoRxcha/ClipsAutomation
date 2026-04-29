@@ -62,6 +62,9 @@ launchctl bootout gui/$(id -u)/com.clipsautomation.tiktok
 | `VPS_USER` | `root` | SSH user for VPS connection |
 | `VPS_KEY_PATH` | *(empty)* | Absolute path to SSH private key on Mac |
 | `VPS_REMOTE_DIR` | `/root/ClipsAutomation/output_tiktok` | Remote directory where clips are queued on the VPS |
+| `MOLDURA_PATH` | *(empty)* | Absolute path to a 1080×1920 PNG frame overlay — leave empty to disable |
+| `MOLDURA_TOPO_PX` | `200` | Pixels of top frame border kept visible (e.g. channel name) |
+| `MOLDURA_RODAPE_PX` | `150` | Pixels of bottom frame border kept visible (e.g. CTA) |
 
 ## Pipeline Architecture
 
@@ -82,7 +85,7 @@ YOUTUBE_CHANNEL_ID (.env)
 
 **Segmentation logic (`src/editor.py`):** Parses `[start -> end] text` lines with regex, groups segments sequentially until reaching `DURACAO_ALVO_SEGUNDOS`, drops final group if under `DURACAO_MINIMA_SEGUNDOS`.
 
-**Rendering (`src/render.py`):** Builds FFmpeg filter graphs manually. Crop formula: `crop=ih*9/16:ih,scale=1080:1920`. Subtitles styled as Arial Bold, yellow, black outline. Output encoded with `-crf 18` for high quality.
+**Rendering (`src/render.py`):** Builds FFmpeg filter graphs manually. Default crop formula: `crop=ih*9/16:ih,scale=1080:1920`. When `MOLDURA_PATH` is set, uses `-filter_complex` with 2 inputs: the PNG is scaled to 1080×1920 as background (`[bg]`), the video is scaled to `1080×(1920-MOLDURA_TOPO_PX-MOLDURA_RODAPE_PX)` with subtitles burned in (`[vid]`), then overlaid centered at `y=MOLDURA_TOPO_PX`. Subtitles styled as Arial Bold, yellow, black outline. Output encoded with `-crf 18` for high quality.
 
 **Upload YouTube (`src/uploader_youtube.py`):** First clip is published immediately as public; subsequent clips are scheduled as private with 3-hour intervals. OAuth2 token cached in `token.json`. Generate `token.json` locally with `gerar_token_youtube.py`, then scp to VPS.
 

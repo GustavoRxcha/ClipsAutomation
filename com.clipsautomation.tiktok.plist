@@ -14,9 +14,9 @@
     <key>WorkingDirectory</key>
     <string>/Users/gustavorocha/Projetos/ClipsAutomation</string>
 
-    <!-- Roda a cada 3 horas -->
+    <!-- Roda a cada 2 horas -->
     <key>StartInterval</key>
-    <integer>10800</integer>
+    <integer>7200</integer>
 
     <key>StandardOutPath</key>
     <string>/Users/gustavorocha/Projetos/ClipsAutomation/logs/tiktok.log</string>
