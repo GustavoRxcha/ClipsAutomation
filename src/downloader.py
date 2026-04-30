@@ -24,11 +24,11 @@ def baixar_video(url: str, pasta_destino: str) -> str | None:
         "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best",
         "merge_output_format": "mp4",
         "outtmpl": os.path.join(pasta_destino, "%(title)s.%(ext)s"),
-        "quiet": True,
-        "no_warnings": True,
         "noprogress": False,
         # necessário para resolver o desafio JS do YouTube em servidores sem browser
         "remote_components": ["ejs:github"],
+        # CLI default é deno, mas instalamos nodejs no setup_vps.sh
+        "js_runtimes": {"node": {}},
     }
 
     if cookies_file and os.path.isfile(cookies_file):
