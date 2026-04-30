@@ -34,6 +34,12 @@ services:
       - ./token.json:/app/token.json
 
       # --------------------------------------------------------
+      # Cookies do YouTube — necessário quando o IP da VPS é
+      # detectado como bot. Exporte do navegador (Netscape format).
+      # --------------------------------------------------------
+      - ./youtube_cookies.txt:/root/ClipsAutomation/youtube_cookies.txt
+
+      # --------------------------------------------------------
       # Moldura PNG (opcional) — só necessário se MOLDURA_PATH
       # estiver configurado no .env
       # --------------------------------------------------------

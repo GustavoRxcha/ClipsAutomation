@@ -27,8 +27,8 @@ def baixar_video(url: str, pasta_destino: str) -> str | None:
         "quiet": True,
         "no_warnings": True,
         "noprogress": False,
-        # A Python API não lê ~/.config/yt-dlp/config — js_runtimes deve ser passado aqui
-        "js_runtimes": {"node": {}},
+        # ios client expõe formatos que o web client oculta em IPs de datacenter
+        "extractor_args": {"youtube": {"player_client": ["ios", "web"]}},
     }
 
     if cookies_file and os.path.isfile(cookies_file):
