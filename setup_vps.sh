@@ -13,7 +13,7 @@ echo ""
 # 1. Dependências do sistema
 # ---------------------------------------------------------------------------
 echo "[1/4] Atualizando pacotes e instalando dependências..."
-apt update && apt install -y python3 python3-pip python3-venv ffmpeg
+apt update && apt install -y python3 python3-pip python3-venv ffmpeg nodejs
 
 # ---------------------------------------------------------------------------
 # 2. Ambiente virtual Python

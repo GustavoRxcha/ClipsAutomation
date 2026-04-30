@@ -27,8 +27,8 @@ def baixar_video(url: str, pasta_destino: str) -> str | None:
         "quiet": True,
         "no_warnings": True,
         "noprogress": False,
-        # ios client expõe formatos que o web client oculta em IPs de datacenter
-        "extractor_args": {"youtube": {"player_client": ["ios", "web"]}},
+        # necessário para resolver o desafio JS do YouTube em servidores sem browser
+        "remote_components": ["ejs:github"],
     }
 
     if cookies_file and os.path.isfile(cookies_file):
@@ -37,12 +37,10 @@ def baixar_video(url: str, pasta_destino: str) -> str | None:
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            titulo = info.get("title", "video")
-            print(f"[*] Título encontrado: {titulo}")
             print("[*] Baixando... (isso pode levar alguns segundos)")
-
-            ydl.download([url])
+            info = ydl.extract_info(url, download=True)
+            titulo = info.get("title", "video")
+            print(f"[*] Título: {titulo}")
 
             # Reconstrói o caminho do arquivo gerado
             nome_arquivo = ydl.prepare_filename(info)
